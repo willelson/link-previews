@@ -1,6 +1,8 @@
 const express = require("express");
 const linkPreviewJs = require("link-preview-js");
+var cors = require("cors");
 const app = express();
+app.use(cors());
 const port = process.env.PORT || 3001;
 
 const server = app.listen(port);
