@@ -12,7 +12,10 @@ server.headersTimeout = 120 * 1000;
 
 app.get("/preview", async (req, res, next) => {
   try {
-    const data = await linkPreviewJs.getLinkPreview(req.query.url);
+    const options = {
+      headers: { 'user-agent': 'googlebot', 'Accept-Language': 'en-GB' },
+    };
+    const data = await linkPreviewJs.getLinkPreview(req.query.url, options);
     res.json(data);
   } catch (err) {
     res.json(err);
