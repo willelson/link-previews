@@ -1,5 +1,6 @@
 const express = require('express');
 const linkPreviewJs = require('link-preview-js');
+require('dotenv').config();
 var cors = require('cors');
 const app = express();
 app.use(cors());
@@ -52,12 +53,40 @@ app.get('/preview', async (req, res, next) => {
   try {
     const options = {
       headers: { 'user-agent': agent, 'Accept-Language': 'en-GB' },
-      timeout: 3500,
+      timeout: 3000,
     };
     const data = await linkPreviewJs.getLinkPreview(req.query.url, options);
+
+    // Check data - if no image and title contains 'Attention Clouflare' throw error
+    const lowerTitle = data.title.toLowerCase();
+
+    if (
+      lowerTitle.includes('attention') &&
+      lowerTitle.includes('required') &&
+      lowerTitle.includes('cloudflare') &&
+      !data.image &&
+      !data.description
+    ) {
+      throw Error('Blocked by Cloudflare');
+    }
     res.json(data);
   } catch (err) {
-    res.json(err);
-    res.status(500);
+    try {
+      const key = process.env.LINK_PREVIEW_API_KEY;
+      var data = { key, q: req.query.url };
+
+      const response = await fetch('https://api.linkpreview.net', {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const resData = await response.json();
+      res.json(resData);
+    } catch (err) {
+      res.json(err);
+      res.status(500);
+    }
   }
 });
