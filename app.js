@@ -83,7 +83,7 @@ app.get('/preview', async (req, res, next) => {
       });
 
       const resData = await response.json();
-      res.json(resData);
+      res.json({ ...resData, images: [resData.image] });
     } catch (err) {
       res.json(err);
       res.status(500);
