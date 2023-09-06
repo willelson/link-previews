@@ -84,6 +84,13 @@ const blockedByCloudflare = (data) => {
   return false;
 };
 
+const processInstagramData = (data) => {
+  const regex = /(?:(?:20)[0-9]{2}):/g;
+  const instaTitle = data.description.split(regex)[1];
+  data.description = data.title;
+  data.title = instaTitle;
+};
+
 app.get('/preview', async (req, res, next) => {
   const randomIndex = Math.floor(Math.random() * userAgents.length);
   const agent = userAgents[randomIndex];
@@ -100,7 +107,7 @@ app.get('/preview', async (req, res, next) => {
       throw Error('Blocked by Cloudflare');
     }
 
-    const { url, title, siteName, description, mediaType, contentType } = data;
+    const { url, siteName, mediaType, contentType } = data;
     let image = data.images[0];
     let imageData;
 
@@ -118,7 +125,10 @@ app.get('/preview', async (req, res, next) => {
         throw Error('No Instagram data returned');
       }
       imageData = await imageUrlToBase64(image);
+      processInstagramData(data);
     }
+
+    const { title, description } = data;
 
     const returnData = {
       url,
