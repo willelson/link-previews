@@ -46,45 +46,141 @@ const userAgents = [
   'Mozilla/5.0 (Linux; Android 13; motorola edge 40) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/21.0 Chrome/110.0.5481.154 Mobile Safari/537.36',
 ];
 
+async function imageUrlToBase64(url) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.arrayBuffer();
+
+    const contentType = response.headers.get('content-type');
+    const base64String = `data:${contentType};base64,${Buffer.from(
+      blob
+    ).toString('base64')}`;
+
+    return base64String;
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+const noInstagramDataReturned = (data) => {
+  if (data.title === 'Instagram' && data.images[0].startsWith('data:image/')) {
+    return true;
+  } else return false;
+};
+
+const blockedByCloudflare = (data) => {
+  // Check data - if no image and title contains 'Attention Clouflare' throw error
+  const lowerTitle = data.title.toLowerCase();
+
+  if (
+    lowerTitle.includes('attention') &&
+    lowerTitle.includes('required') &&
+    lowerTitle.includes('cloudflare') &&
+    !data.image &&
+    !data.description
+  ) {
+    return true;
+  }
+  return false;
+};
+
 app.get('/preview', async (req, res, next) => {
   const randomIndex = Math.floor(Math.random() * userAgents.length);
   const agent = userAgents[randomIndex];
+  const domain = new URL(req.query.url);
 
   try {
     const options = {
       headers: { 'user-agent': agent, 'Accept-Language': 'en-GB' },
-      timeout: 3000,
+      timeout: 4500,
     };
     const data = await linkPreviewJs.getLinkPreview(req.query.url, options);
 
-    // Check data - if no image and title contains 'Attention Clouflare' throw error
-    const lowerTitle = data.title.toLowerCase();
-
-    if (
-      lowerTitle.includes('attention') &&
-      lowerTitle.includes('required') &&
-      lowerTitle.includes('cloudflare') &&
-      !data.image &&
-      !data.description
-    ) {
+    if (blockedByCloudflare(data)) {
       throw Error('Blocked by Cloudflare');
     }
-    res.json(data);
+
+    const { url, title, siteName, description, mediaType, contentType } = data;
+    let image = data.images[0];
+    let imageData;
+
+    if (data.images.length > 0) {
+      let filteredImages = data.images
+        .filter((img) => !img.includes('.svg'))
+        .filter((img) => !img.includes('_logo'));
+      if (filteredImages.length > 0) {
+        image = filteredImages[0];
+      }
+    }
+
+    if (domain.hostname === 'www.instagram.com') {
+      if (noInstagramDataReturned(data)) {
+        throw Error('No Instagram data returned');
+      }
+      imageData = await imageUrlToBase64(image);
+    }
+
+    const returnData = {
+      url,
+      title,
+      siteName,
+      description,
+      mediaType,
+      contentType,
+      image,
+      imageData,
+      source: 'linkPreviewJS',
+    };
+
+    res.json(returnData);
   } catch (err) {
+    console.log(err);
     try {
       const key = process.env.LINK_PREVIEW_API_KEY;
       var data = { key, q: req.query.url };
+
+      const timeout = 4500;
+      const controller = new AbortController();
+      const id = setTimeout(() => {
+        controller.abort();
+        throw Error('API timeout');
+      }, timeout);
 
       const response = await fetch('https://api.linkpreview.net', {
         method: 'POST',
         mode: 'cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        signal: controller.signal,
       });
+      clearTimeout(id);
 
       const resData = await response.json();
       res.json({ ...resData, images: [resData.image] });
+      const { url, title, siteName, description, mediaType, contentType } =
+        resData;
+      const image = resData.image;
+      let imageData;
+
+      if (domain.hostname === 'www.instagram.com') {
+        imageData = await imageUrlToBase64(image);
+      }
+
+      const returnData = {
+        url,
+        title,
+        siteName,
+        description,
+        mediaType,
+        contentType,
+        image,
+        imageData,
+        source: 'api',
+      };
+
+      res.json(returnData);
     } catch (err) {
+      console.log(err);
       res.json(err);
       res.status(500);
     }
