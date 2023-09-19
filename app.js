@@ -99,7 +99,7 @@ app.get('/preview', async (req, res, next) => {
   try {
     const options = {
       headers: { 'user-agent': agent, 'Accept-Language': 'en-GB' },
-      timeout: 4500,
+      timeout: 8000,
     };
     const data = await linkPreviewJs.getLinkPreview(req.query.url, options);
 
@@ -149,7 +149,7 @@ app.get('/preview', async (req, res, next) => {
       const key = process.env.LINK_PREVIEW_API_KEY;
       var data = { key, q: req.query.url };
 
-      const timeout = 4500;
+      const timeout = 6000;
       const controller = new AbortController();
       const id = setTimeout(() => {
         controller.abort();
@@ -196,3 +196,5 @@ app.get('/preview', async (req, res, next) => {
     }
   }
 });
+
+app.get('/wake', async (req, res, next) => res.json({ message: 'awake!' }));
