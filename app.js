@@ -144,7 +144,6 @@ app.get('/preview', async (req, res, next) => {
 
     res.json(returnData);
   } catch (err) {
-    console.log(err);
     try {
       const key = process.env.LINK_PREVIEW_API_KEY;
       var data = { key, q: req.query.url };
@@ -166,23 +165,21 @@ app.get('/preview', async (req, res, next) => {
       clearTimeout(id);
 
       const resData = await response.json();
-      res.json({ ...resData, images: [resData.image] });
-      const { url, title, siteName, description, mediaType, contentType } =
-        resData;
-      const image = resData.image;
+      const { url, title, description, image } = resData;
+
       let imageData;
 
-      if (domain.hostname === 'www.instagram.com') {
+      if (image && domain.hostname === 'www.instagram.com') {
         imageData = await imageUrlToBase64(image);
       }
 
       const returnData = {
         url,
         title,
-        siteName,
+        siteName: resData?.siteName,
         description,
-        mediaType,
-        contentType,
+        mediaType: resData?.mediaType,
+        contentType: resData?.contentType,
         image,
         imageData,
         source: 'api',
