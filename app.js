@@ -43,7 +43,7 @@ const userAgents = [
   'Mozilla/5.0 (Linux; Ubuntu 16.04 like Android 4.4) AppleWebKit/537.36 Chrome/77.0.3865.129 Mobile Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_30_83) AppleWebKit/532.98.41 (KHTML, like Gecko) Chrome/57.4.0087.5359 Safari/534.59 Edge/38.65370',
   'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_46_99) AppleWebKit/533.05.58 (KHTML, like Gecko) Chrome/57.5.0734.6006 Safari/530.66 Edge/34.72849',
-  'Mozilla/5.0 (Linux; Android 13; motorola edge 40) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/21.0 Chrome/110.0.5481.154 Mobile Safari/537.36',
+  'Mozilla/5.0 (Linux; Android 13; motorola edge 40) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/21.0 Chrome/110.0.5481.154 Mobile Safari/537.36'
 ];
 
 async function imageUrlToBase64(url) {
@@ -85,10 +85,13 @@ const blockedByCloudflare = (data) => {
 };
 
 const processInstagramData = (data) => {
-  const regex = /(?:(?:20)[0-9]{2}):/g;
-  const instaTitle = data.description.split(regex)[1];
+  // Switch title and description for Instagram posts
+  // Use text inside double quotes for title or fall back to description
+  const extractedTitle = data.description
+    .match(/(?:"[^"]*"|^[^"]*$)/)[0]
+    .replace(/"/g, '');
   data.description = data.title;
-  data.title = instaTitle;
+  data.title = extractedTitle || data.description;
 };
 
 app.get('/preview', async (req, res, next) => {
@@ -99,7 +102,7 @@ app.get('/preview', async (req, res, next) => {
   try {
     const options = {
       headers: { 'user-agent': agent, 'Accept-Language': 'en-GB' },
-      timeout: 8000,
+      timeout: 8000
     };
     const data = await linkPreviewJs.getLinkPreview(req.query.url, options);
 
@@ -139,7 +142,7 @@ app.get('/preview', async (req, res, next) => {
       contentType,
       image,
       imageData,
-      source: 'linkPreviewJS',
+      source: 'linkPreviewJS'
     };
 
     res.json(returnData);
@@ -160,7 +163,7 @@ app.get('/preview', async (req, res, next) => {
         mode: 'cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-        signal: controller.signal,
+        signal: controller.signal
       });
       clearTimeout(id);
 
@@ -182,12 +185,11 @@ app.get('/preview', async (req, res, next) => {
         contentType: resData?.contentType,
         image,
         imageData,
-        source: 'api',
+        source: 'api'
       };
 
       res.json(returnData);
     } catch (err) {
-      console.log(err);
       res.json(err);
       res.status(500);
     }
